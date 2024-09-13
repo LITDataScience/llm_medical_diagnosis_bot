@@ -1,0 +1,42 @@
+Fever: fever, high fever, low-grade fever, hyperthermia, hypothermia
+Cough: cough, dry cough, hacking cough, choking cough, wheezing cough, muffled cough
+Sore throat: sore throat, tonsillitis, pharyngitis, hoarseness, itchy throat, swollen throat, dysphonia
+Loss of appetite: anorexia, loss of appetite, poor appetite
+Bubbling: bubbling, choking, spitting up
+Vomiting: vomiting, retching, regurgitation, spitting up
+Runny nose: runny nose, nasal discharge, rhinorrhea
+Sneezing: sneezing
+Shortness of breath: shortness of breath, dyspnea, wheezing, labored breathing, gasping for breath, snoring
+Lethargy: lethargy, drowsiness, fatigue, weakness, malaise
+Drooling: drooling, hypersalivation
+Nosebleed: nosebleed, epistaxis
+Nasal congestion: nasal congestion, nasal obstruction, stuffy nose
+Coughing up phlegm: coughing up phlegm, sputum production
+Wheezing: wheezing, whistling sound in the chest
+Headache: headache, dizziness
+Rubbing eyes: eye rubbing, red eyes, tearing, swollen eyes, yellow eye discharge
+Hiccups: hiccups
+Flatulence: flatulence, gas
+Rumbling stomach: bowel sounds, rumbling stomach
+Nausea: nausea
+Restlessness: restlessness, irritability, sleeplessness, insomnia
+Night sweats: night sweats
+Bloating: bloating, distension
+Oliguria: oliguria, decreased urine output
+Weight loss: weight loss
+Abdominal pain: abdominal pain, stomach ache
+Thirst: thirst
+Picking nose: nose picking
+Seizures: seizure, convulsion
+Rash: rash, eczema, hives, skin rash
+Swollen lymph nodes: lymphadenopathy
+Blisters: blisters
+Diarrhea: diarrhea, loose stools, watery stool
+Green stool: green stool
+Curd-like stool: curdy stool
+Foul-smelling stool: foul-smelling stool
+White tongue coating: white tongue coating
+Lung opacity: lung opacity, lung infection
+Rales: rales, crackles
+Allergy: allergy
+Lymphadenopathy: swollen lymph nodes
