@@ -1,0 +1,30 @@
+# PyCharm specific
+.idea/
+*.iml
+*.iws
+*.xml
+
+# Python specific
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+
+# Virtual environment
+venv/
+.env/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Other common files
+*.swp
+*.swo
+.vscode/
