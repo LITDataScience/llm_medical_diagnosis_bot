@@ -1,10 +1,6 @@
-from timeit import default_timer as timer
-from datetime import timedelta
 from utils.utils import *
-import math
-from usersim.usersim_test import TestRuleSimulator      
+from usersim.usersim_test import TestRuleSimulator
 from usersim.usersim_rule import RuleSimulator
-# from utils.wrappers import *
 from agents.agent import AgentDQN
 from dialog_system.dialog_manager import DialogManager
 from tensorboardX import SummaryWriter
@@ -13,7 +9,6 @@ import dialog_config
 import torch
 import numpy as np
 import os
-import shutil
 
 writer = SummaryWriter()
 parser = argparse.ArgumentParser()
@@ -101,38 +96,41 @@ dialog_config.auto_suggest = params['auto_suggest']
 ################################################################################
 #   Parameters for Agents
 ################################################################################
-agent_params = {}
-agent_params['max_turn'] = max_turn
-agent_params['epsilon'] = params['epsilon']
-agent_params['agent_run_mode'] = params['run_mode']
-agent_params['agent_act_level'] = params['act_level']
-agent_params['experience_replay_size'] = params['experience_replay_size']
-agent_params['dqn_hidden_size'] = params['dqn_hidden_size']
-agent_params['batch_size'] = params['batch_size']
-agent_params['gamma'] = params['gamma']
-agent_params['lr'] = params['lr']
-agent_params['predict_mode'] = params['predict_mode']
-agent_params['trained_model_path'] = params['trained_model_path']
-agent_params['warm_start'] = params['warm_start']
-agent_params['supervise'] = params['supervise']
-agent_params['cmd_input_mode'] = params['cmd_input_mode']
-agent_params['fix_buffer'] = fix_buffer
-agent_params['priority_replay'] = priority_replay
-agent_params['target_net_update_freq'] = params['target_net_update_freq']
-agent_params['origin_model'] = params['origin_model']
-agent = AgentDQN(sym_dict, dise_dict, req_dise_sym_dict, dise_sym_num_dict, tran_mat, dise_sym_pro, sym_dise_pro, sp, act_set, slot_set, agent_params, static_policy=True)
+agent_params = {
+    'max_turn': max_turn,
+    'epsilon': params['epsilon'],
+    'agent_run_mode': params['run_mode'],
+    'agent_act_level': params['act_level'],
+    'experience_replay_size': params['experience_replay_size'],
+    'dqn_hidden_size': params['dqn_hidden_size'],
+    'batch_size': params['batch_size'],
+    'gamma': params['gamma'],
+    'lr': params['lr'],
+    'predict_mode': params['predict_mode'],
+    'trained_model_path': params['trained_model_path'],
+    'warm_start': params['warm_start'],
+    'supervise': params['supervise'],
+    'cmd_input_mode': params['cmd_input_mode'],
+    'fix_buffer': fix_buffer,
+    'priority_replay': priority_replay,
+    'target_net_update_freq': params['target_net_update_freq'],
+    'origin_model': params['origin_model']
+}
+agent = AgentDQN(sym_dict, dise_dict, req_dise_sym_dict, dise_sym_num_dict,
+                 tran_mat, dise_sym_pro, sym_dise_pro, sp, act_set, slot_set, agent_params, static_policy=True)
 
 ################################################################################
 #   Parameters for User Simulators
 ################################################################################
-usersim_params = {}
-usersim_params['max_turn'] = max_turn
-usersim_params['slot_err_probability'] = params['slot_err_prob']
-usersim_params['slot_err_mode'] = params['slot_err_mode']
-usersim_params['intent_err_probability'] = params['intent_err_prob']
-usersim_params['simulator_run_mode'] = params['run_mode']
-usersim_params['simulator_act_level'] = params['act_level']
-usersim_params['data_split'] = params['learning_phase']
+usersim_params = {
+    'max_turn': max_turn,
+    'slot_err_probability': params['slot_err_prob'],
+    'slot_err_mode': params['slot_err_mode'],
+    'intent_err_probability': params['intent_err_prob'],
+    'simulator_run_mode': params['run_mode'],
+    'simulator_act_level': params['act_level'],
+    'data_split': params['learning_phase']
+}
 
 user_sim = RuleSimulator(sym_dict, act_set, slot_set, goal_set, usersim_params)
 test_user_sim = TestRuleSimulator(sym_dict, act_set, slot_set, goal_set, usersim_params)
@@ -177,18 +175,18 @@ episode_reward = 0
 """ Save model """
 
 
-def save_model(path, agt, agent, cur_epoch, best_epoch=0, best_success_rate=0.0, best_ave_turns=0.0, tr_success_rate=0.0, te_success_rate=0.0, phase="", is_checkpoint=False):
+def save_model(path, agt, agent, cur_epoch, best_epoch=0, best_success_rate=0.0, best_ave_turns=0.0,
+               tr_success_rate=0.0, te_success_rate=0.0, phase="", is_checkpoint=False):
     if not os.path.exists(path):
         os.makedirs(path)
-    checkpoint = {}
-    checkpoint['cur_epoch'] = cur_epoch
-    checkpoint['state_dict'] = agent.model.state_dict()
+    checkpoint = {'cur_epoch': cur_epoch, 'state_dict': agent.model.state_dict()}
     if is_checkpoint:
         file_name = 'checkpoint.pth.tar'
         checkpoint['eval_success'] = tr_success_rate
         checkpoint['test_success'] = te_success_rate
     else:
-        file_name = 'agt_%s_%s_%s_%s_%.3f_%.3f.pth.tar' % (agt, phase, best_epoch, cur_epoch, best_success_rate, best_ave_turns)
+        file_name = 'agt_%s_%s_%s_%s_%.3f_%.3f.pth.tar' % (agt, phase, best_epoch, cur_epoch,
+                                                           best_success_rate, best_ave_turns)
         checkpoint['best_success_rate'] = best_success_rate
         checkpoint['best_epoch'] = best_epoch
     file_path = os.path.join(path, file_name)
@@ -216,7 +214,8 @@ def simulation_epoch(simulation_epoch_size, output=False):
     res['success_rate'] = float(successes) / simulation_epoch_size
     res['ave_reward'] = float(cumulative_reward) / simulation_epoch_size
     res['ave_turns'] = float(cumulative_turns) / simulation_epoch_size
-    print("simulation success rate %s, ave reward %s, ave turns %s" % (res['success_rate'], res['ave_reward'], res['ave_turns']))
+    print("simulation success rate %s, ave reward %s, ave turns %s" % (res['success_rate'],
+                                                                       res['ave_reward'], res['ave_turns']))
     return res
 
 
@@ -249,8 +248,12 @@ def eval(simu_size, data_split, out=False):
     res['ave_reward'] = float(cumulative_reward) / simu_size
     res['ave_turns'] = float(cumulative_turns) / simu_size
     avg_hit_rate = avg_hit_rate / simu_size
-    print("%s hit rate %.4f, success rate %s, ave reward %s, ave turns %s" % (data_split, avg_hit_rate, res['success_rate'], res['ave_reward'], res['ave_turns']))
+    print("%s hit rate %.4f, success rate %s, ave reward %s, ave turns %s" % (data_split,
+                                                                              avg_hit_rate,
+                                                                              res['success_rate'],
+                                                                              res['ave_reward'], res['ave_turns']))
     return res
+
 
 def test(simu_size, data_split, out=False):
     successes = 0
@@ -286,11 +289,15 @@ def test(simu_size, data_split, out=False):
     res['ave_reward'] = float(cumulative_reward) / float(simu_size)
     res['ave_turns'] = float(cumulative_turns) / float(simu_size)
     avg_hit_rate = avg_hit_rate / simu_size
-    print("%s hit rate %.4f, success rate %.4f, ave reward %.4f, ave turns %.4f" % (data_split, avg_hit_rate, res['success_rate'], res['ave_reward'], res['ave_turns']))
+    print("%s hit rate %.4f, success rate %.4f, ave reward %.4f, ave turns %.4f" % (data_split,
+                                                                                    avg_hit_rate,
+                                                                                    res['success_rate'],
+                                                                                    res['ave_reward'], res['ave_turns']))
     agent.epsilon = params['epsilon']
     test_dialog_manager.user.left_goal = copy.deepcopy(goal_set[data_split])
-    
+
     return res
+
 
 def warm_start_simulation():
     successes = 0
@@ -355,12 +362,12 @@ def training(count):
             # evaluation and test
             #eval_res = eval(5 * simulation_epoch_size, train_set)
             eval_res = test(len(goal_set[train_set]), train_set)
-            writer.add_scalar('eval/accracy', torch.tensor(eval_res['success_rate'], device=dialog_config.device), episode)
+            writer.add_scalar('eval/accuracy', torch.tensor(eval_res['success_rate'], device=dialog_config.device), episode)
             writer.add_scalar('eval/ave_reward', torch.tensor(eval_res['ave_reward'], device=dialog_config.device), episode)
             writer.add_scalar('eval/ave_turns', torch.tensor(eval_res['ave_turns'], device=dialog_config.device), episode)
             test_res = test(len(goal_set[test_set]), test_set)
             #test_res = eval(5 * simulation_epoch_size, test_set)
-            writer.add_scalar('test/accracy', torch.tensor(test_res['success_rate'], device=dialog_config.device), episode)
+            writer.add_scalar('test/accuracy', torch.tensor(test_res['success_rate'], device=dialog_config.device), episode)
             writer.add_scalar('test/ave_reward', torch.tensor(test_res['ave_reward'], device=dialog_config.device), episode)
             writer.add_scalar('test/ave_turns', torch.tensor(test_res['ave_turns'], device=dialog_config.device), episode)
 
@@ -370,7 +377,7 @@ def training(count):
                 best_te_res['ave_reward'] = test_res['ave_reward']
                 best_te_res['ave_turns'] = test_res['ave_turns']
                 best_te_res['epoch'] = episode
-                save_model(params['write_model_dir'], agt, agent, episode, best_epoch=best_te_res['epoch'],  best_success_rate=best_te_res['success_rate'],  best_ave_turns=best_te_res['ave_turns'], phase="test")
+                save_model(params['write_model_dir'], agt, agent, episode, best_epoch=best_te_res['epoch'], best_success_rate=best_te_res['success_rate'], best_ave_turns=best_te_res['ave_turns'], phase="test")
 
             # is not fix buffer, clear buffer when accuracy promotes
             if eval_res['success_rate'] >= best_res['success_rate']:
