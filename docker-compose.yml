@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  # Federated Learning Server
+  fl-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medical-diagnosis-fl-server
+    ports:
+      - "8080:8080"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FL_SERVER_ADDRESS=0.0.0.0:8080
+      - NUM_ROUNDS=100
+      - MIN_CLIENTS=2
+    volumes:
+      - ./checkpoints:/app/checkpoints
+      - ./logs:/app/logs
+      - ./dataset:/app/dataset
+    command: python federated_learning/fl_server.py --address 0.0.0.0:8080
+    networks:
+      - medical-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Medical Diagnosis Web App
+  web-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medical-diagnosis-web
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    volumes:
+      - ./checkpoints:/app/checkpoints
+      - ./dataset:/app/dataset
+      - ./models:/app/models
+    command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+    networks:
+      - medical-network
+    depends_on:
+      - fl-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Federated Learning Client 1
+  fl-client-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medical-diagnosis-fl-client-1
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CLIENT_ID=hospital_1
+      - FL_SERVER_ADDRESS=fl-server:8080
+    volumes:
+      - ./dataset:/app/dataset
+      - ./checkpoints:/app/checkpoints
+    command: python federated_learning/fl_client.py --server fl-server:8080 --client-id hospital_1
+    networks:
+      - medical-network
+    depends_on:
+      - fl-server
+
+  # Federated Learning Client 2
+  fl-client-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medical-diagnosis-fl-client-2
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CLIENT_ID=hospital_2
+      - FL_SERVER_ADDRESS=fl-server:8080
+    volumes:
+      - ./dataset:/app/dataset
+      - ./checkpoints:/app/checkpoints
+    command: python federated_learning/fl_client.py --server fl-server:8080 --client-id hospital_2
+    networks:
+      - medical-network
+    depends_on:
+      - fl-server
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: medical-diagnosis-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - medical-network
+    volumes:
+      - redis-data:/data
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: medical-diagnosis-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - medical-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+  # Grafana for visualization (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: medical-diagnosis-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - medical-network
+    depends_on:
+      - prometheus
+
+networks:
+  medical-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:
