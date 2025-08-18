@@ -340,7 +340,7 @@ class EnhancedMedicalDiagnosisModel(nn.Module):
         explanations = self._generate_explanations(
             top_indices,
             symptom_attention,
-            kg_predictions
+            kg_disease_probs
         )
         
         return {
@@ -576,6 +576,9 @@ def create_enhanced_diagnosis_model(
         num_diseases=len(diseases),
         num_symptoms=len(symptoms)
     )
+    # Expose ordered name lists aligned to model output indices
+    model.disease_names = [d.name for d in diseases]
+    model.symptom_names = [s.name for s in symptoms]
     
     # Load pretrained weights if available
     if pretrained_path and os.path.exists(pretrained_path):

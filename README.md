@@ -7,6 +7,14 @@ An advanced AI-powered medical diagnosis system featuring:
 - 🧠 **Knowledge graph integration** for medical reasoning
 - 📊 **Real-time visualization** of diagnosis confidence
 
+## ➕ New in this version
+
+- Multi-turn intake flow with follow-up questions before diagnosis
+- LLM-assisted symptom extraction and concise explanations
+- Lightweight RAG pipeline (knowledge graph → retriever → prompt context)
+- Multi-agent orchestrator coordinating extraction, questioning, and diagnosis
+- Responsive Streamlit UI adapts to screen width
+
 ## 🌟 Key Features
 
 ### 1. Enhanced Disease Prediction
@@ -51,6 +59,10 @@ pip install -r requirements.txt
 
 # Start the Streamlit app
 streamlit run app.py
+
+# Optional: set LLM environment variables (LiteLLM compatible)
+export OPENAI_API_KEY=YOUR_KEY
+export LITELLM_MODEL=gpt-4o-mini
 
 # Optional: Start federated learning server
 ./scripts/start_fl_server.sh

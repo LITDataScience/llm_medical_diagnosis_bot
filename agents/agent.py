@@ -67,8 +67,8 @@ class AgentDQN(BaseAgent):
         #self.optimizer = optim.RMSprop(self.model.parameters(), lr=self.lr, weight_decay=0.001)
 
         # move to correct device
-        self.model = self.model.to(self.device)
-        self.target_model.to(self.device)
+        # self.model = self.model.to(self.device)
+        # self.target_model.to(self.device)
         '''
         if self.static_policy:
             self.model.eval()
@@ -93,8 +93,9 @@ class AgentDQN(BaseAgent):
 
     def declare_networks(self, path):
         
-        self.model = KR_DQN(self.state_dimension, self.dqn_hidden_size, self.num_actions, self.tran_mat, self.dise_start, self.act_cardinality, self.slot_cardinality, self.sym_dise_pro, self.dise_sym_pro, self.sym_prio)
-        self.target_model = KR_DQN(self.state_dimension, self.dqn_hidden_size, self.num_actions, self.tran_mat, self.dise_start, self.act_cardinality, self.slot_cardinality, self.sym_dise_pro, self.dise_sym_pro, self.sym_prio)
+        with torch.device(self.device):
+            self.model = KR_DQN(self.state_dimension, self.dqn_hidden_size, self.num_actions, self.tran_mat, self.dise_start, self.act_cardinality, self.slot_cardinality, self.sym_dise_pro, self.dise_sym_pro, self.sym_prio)
+            self.target_model = KR_DQN(self.state_dimension, self.dqn_hidden_size, self.num_actions, self.tran_mat, self.dise_start, self.act_cardinality, self.slot_cardinality, self.sym_dise_pro, self.dise_sym_pro, self.sym_prio)
         if path is not None:
             if self.origin_model==1:
                 checkpoint = torch.load(path)

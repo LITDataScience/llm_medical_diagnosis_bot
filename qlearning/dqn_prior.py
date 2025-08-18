@@ -68,11 +68,9 @@ class KR_DQN(nn.Module):
 
         self.fc1 = nn.Linear(self.input_shape, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.num_actions)
-        self.tran_mat = Parameter(torch.Tensor(relation_init.size(0),relation_init.size(1)))
+        self.tran_mat = Parameter(relation_init)
         self.knowledge_branch = Knowledge_Graph_Reasoning(self.num_actions, self.dise_start, self.act_cardinality, self.slot_cardinality, 
             self.dise_sym_mat, self.sym_dise_mat, self.sym_prio)
-
-        self.tran_mat.data = relation_init
 
         #self.reset_parameters()
     def reset_parameters(self):

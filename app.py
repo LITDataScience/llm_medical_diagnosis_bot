@@ -22,6 +22,8 @@ import pandas as pd
 from agents.agent import AgentDQN
 from dialog_system.dialog_manager import DialogManager
 from models.enhanced_diagnosis_model import create_enhanced_diagnosis_model, EnhancedMedicalDiagnosisModel
+from rag.retriever import SimpleMedicalRetriever
+from agents.multi_agent_orchestrator import ConversationOrchestrator
 import dialog_config
 from federated_learning.fl_client import create_federated_client
 
@@ -135,6 +137,14 @@ class MedicalDiagnosisChatBot:
         self.initialize_models()
         self.symptom_list = self.load_symptoms()
         self.disease_list = self.load_diseases()
+        # Build lightweight retriever index from the enhanced model's knowledge graph
+        self.retriever = SimpleMedicalRetriever()
+        try:
+            self.retriever.index_from_model(self.enhanced_model)
+        except Exception:
+            pass
+        # Multi-agent orchestrator (LLM-assisted)
+        self.orchestrator = ConversationOrchestrator(self, self.retriever)
         
     def initialize_models(self):
         """Initialize all AI models"""
@@ -155,7 +165,8 @@ class MedicalDiagnosisChatBot:
         except:
             # If pickle fails, load as text
             with open(os.path.join(data_folder, 'slot_set.txt'), 'r') as f:
-                self.slot_set = [line.strip() for line in f.readlines()]
+                lines = f.readlines()
+                self.slot_set = {line.strip(): i for i, line in enumerate(lines)}
                 
         # Load symptoms dictionary
         try:
@@ -173,6 +184,65 @@ class MedicalDiagnosisChatBot:
                 lines = f.readlines()
                 self.dise_dict = {i: line.strip() for i, line in enumerate(lines)}
         
+        # Load additional required data files for AgentDQN
+        try:
+            self.req_dise_sym_dict = pickle.load(open(os.path.join(data_folder, 'req_dise_sym_dict.p'), 'rb'))
+        except:
+            self.req_dise_sym_dict = {}
+            
+        try:
+            self.dise_sym_num_dict = pickle.load(open(os.path.join(data_folder, 'dise_sym_num_dict.p'), 'rb'))
+        except:
+            self.dise_sym_num_dict = {}
+            
+        # Load transition matrix (action_mat.txt)
+        try:
+            with open(os.path.join(data_folder, 'action_mat.txt'), 'r') as f:
+                lines = f.readlines()
+                tran_mat = []
+                for line in lines:
+                    if line.strip():
+                        row = [float(x) for x in line.strip().split()]
+                        tran_mat.append(row)
+                self.tran_mat = np.array(tran_mat)
+        except:
+            # Create a default transition matrix if file not found
+            self.tran_mat = np.zeros((100, 100))  # Default size
+            
+        # Load symptom-disease probability matrix
+        try:
+            with open(os.path.join(data_folder, 'sym_dise_pro.txt'), 'r') as f:
+                lines = f.readlines()
+                sym_dise_pro = []
+                for line in lines:
+                    if line.strip():
+                        row = [float(x) for x in line.strip().split()]
+                        sym_dise_pro.append(row)
+                self.sym_dise_pro = np.array(sym_dise_pro)
+        except:
+            self.sym_dise_pro = np.zeros((100, 100))  # Default size
+            
+        # Load disease-symptom probability matrix
+        try:
+            with open(os.path.join(data_folder, 'dise_sym_pro.txt'), 'r') as f:
+                lines = f.readlines()
+                dise_sym_pro = []
+                for line in lines:
+                    if line.strip():
+                        row = [float(x) for x in line.strip().split()]
+                        dise_sym_pro.append(row)
+                self.dise_sym_pro = np.array(dise_sym_pro)
+        except:
+            self.dise_sym_pro = np.zeros((100, 100))  # Default size
+            
+        # Load symptom priority
+        try:
+            with open(os.path.join(data_folder, 'sym_prio.txt'), 'r') as f:
+                line = f.readline().strip()
+                self.sym_prio = np.array([float(x) for x in line.split()])
+        except:
+            self.sym_prio = np.zeros(100)  # Default size
+        
         # Initialize agent
         params = {
             'dqn_hidden_size': 128,
@@ -182,28 +252,43 @@ class MedicalDiagnosisChatBot:
             'batch_size': 16,
             'gamma': 0.9,
             'target_net_update_freq': 1,
-            'warm_start': 0,
+            'warm_start': 2,
             'max_turn': 22,
             'fix_buffer': 0,
             'priority_replay': False,
+            'trained_model_path': None,
             'predict_mode': True
         }
         
+        # Create act_set dictionary from feasible_actions
+        act_set = {}
+        for i, action in enumerate(dialog_config.feasible_actions):
+            act_set[action['diaact']] = i
+            
         # Create agent
         self.agent = AgentDQN(
             sym_dict=self.sym_dict,
             dise_dict=self.dise_dict,
-            act_set=dialog_config.feasible_actions,
+            req_dise_sym_dict=self.req_dise_sym_dict,
+            dise_sym_num_dict=self.dise_sym_num_dict,
+            tran_mat=self.tran_mat,
+            sym_dise_pro=self.sym_dise_pro,
+            dise_sym_pro=self.dise_sym_pro,
+            sym_prio=self.sym_prio,
+            act_set=act_set,
             slot_set=self.slot_set,
             params=params
         )
         
         # Load pre-trained model if available
-        model_path = "./checkpoints/exp_models/KR-DQN/test_0.739.pth.tar"
-        if os.path.exists(model_path):
-            checkpoint = torch.load(model_path, map_location=dialog_config.device)
-            self.agent.load_state_dict(checkpoint['state_dict'])
-            
+        # model_path = "./checkpoints/exp_models/KR-DQN/test_0.739.pth.tar"
+        # if os.path.exists(model_path):
+        #     checkpoint = torch.load(model_path, map_location=dialog_config.device)
+        #     self.agent.model.load_state_dict(checkpoint['state_dict'])
+        #     self.agent.target_model.load_state_dict(self.agent.model.state_dict())
+        #     self.agent.predict_mode = True
+        #     self.agent.warm_start = 2
+        
     def load_symptoms(self) -> List[str]:
         """Load symptom list"""
         symptom_file = "dataset/symptoms.txt"
@@ -221,35 +306,10 @@ class MedicalDiagnosisChatBot:
         return []
         
     def process_user_input(self, user_input: str, conversation_state: Dict) -> Dict:
+        """Process a user turn through the multi-agent orchestrator.
+        The orchestrator decides whether to ask follow-up or to diagnose.
         """
-        Process user input and generate response
-        """
-        # Extract symptoms from natural language
-        extracted_symptoms = self.extract_symptoms(user_input)
-        
-        # Update conversation state
-        conversation_state['mentioned_symptoms'].extend(extracted_symptoms)
-        conversation_state['turn_count'] += 1
-        
-        # Use enhanced model for diagnosis
-        if len(conversation_state['mentioned_symptoms']) >= 2:
-            diagnosis_result = self.get_diagnosis(
-                text_description=user_input,
-                symptom_ids=conversation_state['mentioned_symptoms'],
-                patient_history=conversation_state.get('patient_history', {})
-            )
-            
-            response = self.format_diagnosis_response(diagnosis_result)
-            conversation_state['diagnosis'] = diagnosis_result
-        else:
-            # Ask follow-up questions
-            response = self.generate_follow_up_question(conversation_state)
-            
-        return {
-            'response': response,
-            'state': conversation_state,
-            'extracted_symptoms': extracted_symptoms
-        }
+        return self.orchestrator.route_turn(user_input, conversation_state)
         
     def extract_symptoms(self, text: str) -> List[int]:
         """Extract symptom IDs from user text"""
@@ -276,15 +336,21 @@ class MedicalDiagnosisChatBot:
         
     def format_diagnosis_response(self, diagnosis_result: Dict) -> str:
         """Format diagnosis results into readable response"""
-        confidence = float(diagnosis_result['confidence'][0])
+        confidence = float(diagnosis_result['confidence'][0].item())
         top_diseases = diagnosis_result['top_diseases'][0]
         top_probs = diagnosis_result['top_probabilities'][0]
         
         response = f"Based on your symptoms, here are the most likely diagnoses:\n\n"
         
+        # Prefer disease names from the enhanced model for correct alignment
+        model_disease_names = getattr(self.enhanced_model, 'disease_names', None)
         for i, (disease_idx, prob) in enumerate(zip(top_diseases[:3], top_probs[:3])):
-            disease_name = self.disease_list[disease_idx] if disease_idx < len(self.disease_list) else f"Disease {disease_idx}"
-            response += f"**{i+1}. {disease_name}** - {float(prob)*100:.1f}% probability\n"
+            idx = disease_idx.item()
+            if model_disease_names and idx < len(model_disease_names):
+                disease_name = model_disease_names[idx]
+            else:
+                disease_name = self.disease_list[idx] if idx < len(self.disease_list) else f"Disease {idx}"
+            response += f"**{i+1}. {disease_name}** - {float(prob.item())*100:.1f}% probability\n"
             
         response += f"\n**Overall Confidence**: {confidence*100:.1f}%\n\n"
         response += "⚠️ **Important**: This is an AI-assisted diagnosis for reference only. Please consult a healthcare professional for accurate medical advice."
@@ -390,15 +456,20 @@ def display_diagnosis_visualization():
             disease_names = []
             probabilities = []
             
+            model_disease_names = getattr(st.session_state.chatbot.enhanced_model, 'disease_names', None)
             for i, (disease_idx, prob) in enumerate(zip(
                 diagnosis['top_diseases'][0][:5], 
                 diagnosis['top_probabilities'][0][:5]
             )):
-                disease_name = st.session_state.chatbot.disease_list[disease_idx] \
-                    if disease_idx < len(st.session_state.chatbot.disease_list) \
-                    else f"Disease {disease_idx}"
+                idx = disease_idx.item()
+                if model_disease_names and idx < len(model_disease_names):
+                    disease_name = model_disease_names[idx]
+                else:
+                    disease_name = st.session_state.chatbot.disease_list[idx] \
+                        if idx < len(st.session_state.chatbot.disease_list) \
+                        else f"Disease {idx}"
                 disease_names.append(disease_name)
-                probabilities.append(float(prob) * 100)
+                probabilities.append(float(prob.item()) * 100)
                 
             fig = go.Figure(data=[
                 go.Bar(
@@ -421,7 +492,7 @@ def display_diagnosis_visualization():
             
         with col2:
             # Confidence gauge
-            confidence = float(diagnosis['confidence'][0]) * 100
+            confidence = float(diagnosis['confidence'][0].item()) * 100
             
             fig = go.Figure(go.Indicator(
                 mode="gauge+number+delta",
